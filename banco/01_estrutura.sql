@@ -46,8 +46,6 @@ CREATE TABLE conta (
     data_fechamento DATETIME,
     situacao ENUM('ABERTA', 'FECHADA', 'CANCELADA') NOT NULL DEFAULT 'ABERTA',
     total DECIMAL(10,2) NOT NULL DEFAULT 0,
-    -- vale o id da mesa so enquanto a conta esta aberta: com o UNIQUE,
-    -- impede duas contas abertas na mesma mesa
     mesa_aberta INT GENERATED ALWAYS AS (IF(situacao = 'ABERTA', id_mesa, NULL)) STORED,
     CONSTRAINT uq_conta_aberta_por_mesa UNIQUE (mesa_aberta),
     CONSTRAINT FK_conta_mesa FOREIGN KEY (id_mesa)
@@ -79,7 +77,7 @@ CREATE TABLE item_pedido (
     id_pedido INT NOT NULL,
     id_produto INT NOT NULL,
     quantidade INT NOT NULL,
-    preco_unitario DECIMAL(10,2) NOT NULL, -- preco do produto no momento da venda
+    preco_unitario DECIMAL(10,2) NOT NULL, 
     CONSTRAINT FK_item_pedido FOREIGN KEY (id_pedido)
         REFERENCES pedido(id_pedido) ON DELETE RESTRICT,
     CONSTRAINT FK_item_produto FOREIGN KEY (id_produto)
@@ -94,14 +92,13 @@ CREATE TABLE grupos_usuarios (
     descricao VARCHAR(255)
 );
 
--- Grupos usados pelo enum GrupoUsuario (os nomes têm que ser exatamente estes)
 INSERT IGNORE INTO grupos_usuarios (nome_grupo, descricao) VALUES
   ('GARCOM',  'Abre/fecha contas, registra pedidos, consulta cardápio e mesas'),
   ('GERENTE', 'Perfil do garçom + cadastros e relatórios'),
   ('ADMIN',   'Acesso total, inclusive gestão de usuários');
 
 CREATE TABLE usuarios (
-    id_usuario VARCHAR(10) PRIMARY KEY, -- Aqui você pode usar a sua função gerar_id_usuario()
+    id_usuario VARCHAR(10) PRIMARY KEY, 
     nome VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     senha_hash VARCHAR(255) NOT NULL,
@@ -134,7 +131,7 @@ INSERT INTO sequencia_id (nome, ultimo_valor) VALUES ('USR', 0);
 
 DELIMITER $$
 
--- Gera IDs no padrao USR-000001, USR-000002, ...
+
 CREATE FUNCTION gerar_id_usuario()
 RETURNS VARCHAR(10)
 NOT DETERMINISTIC
@@ -147,7 +144,6 @@ BEGIN
     RETURN CONCAT('USR-', LPAD(LAST_INSERT_ID(), 6, '0'));
 END$$
 
--- Total de uma conta: só pedido FINALIZADO entra (mesma regra de SituacaoPedido.entraNoTotal)
 CREATE FUNCTION calcular_total_conta(p_id_conta INT)
 RETURNS DECIMAL(10,2)
 NOT DETERMINISTIC
@@ -170,7 +166,6 @@ DELIMITER ;
 -- VIEWS (criadas após as functions que utilizam)
 -- =====================================================================
 
--- View 1: Resumo das contas abertas com o total parcial
 CREATE VIEW vw_contas_abertas AS
 SELECT 
     c.id_conta,
@@ -182,7 +177,6 @@ FROM conta c
 JOIN mesa m ON c.id_mesa = m.id_mesa
 WHERE c.situacao = 'ABERTA';
 
--- View 2: Cardápio completo com categorias
 CREATE VIEW vw_cardapio_completo AS
 SELECT 
     p.id_produto,
@@ -198,7 +192,6 @@ JOIN categoria c ON p.id_categoria = c.id_categoria;
 
 DELIMITER $$
 
--- Atualizar automaticamente pedido.total (a partir de item_pedido)
 CREATE TRIGGER trg_item_pedido_ai
 AFTER INSERT ON item_pedido
 FOR EACH ROW
@@ -240,7 +233,6 @@ BEGIN
      WHERE id_pedido = OLD.id_pedido;
 END$$
 
--- Sincronizar mesa.situacao com conta.situacao
 CREATE TRIGGER trg_conta_ai
 AFTER INSERT ON conta
 FOR EACH ROW
@@ -317,7 +309,6 @@ BEGIN
 
     START TRANSACTION;
 
-    -- Trava a conta para ninguem fecha-la enquanto o pedido e gravado.
     SELECT situacao INTO v_situacao_conta
       FROM conta
      WHERE id_conta = p_id_conta
@@ -364,7 +355,6 @@ BEGIN
     COMMIT;
 END$$
 
--- fechar_conta: devolve a situação e usa CANCELADA quando nada foi cobrado
 CREATE PROCEDURE fechar_conta(
     IN  p_id_conta INT,
     OUT p_total    DECIMAL(10,2),
@@ -419,7 +409,6 @@ DELIMITER ;
 -- NÍVEIS DE PERMISSÃO E USUÁRIOS
 -- =====================================================================
 
--- 0. PERFIL: APP_LOGIN (Autenticação prévia antes do login)
 CREATE USER IF NOT EXISTS 'app_login'@'localhost' IDENTIFIED BY 'LoginSenha123!';
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'app_login'@'localhost';
 
@@ -427,12 +416,9 @@ GRANT SELECT ON restaurante.usuarios        TO 'app_login'@'localhost';
 GRANT SELECT ON restaurante.grupos_usuarios TO 'app_login'@'localhost';
 
 
--- 1. PERFIL: GARÇOM 
--- Regra: Abrir/fechar contas, registrar/atualizar/excluir pedidos e consultar cardápio/mesas.
 CREATE USER IF NOT EXISTS 'garcom_user'@'localhost' IDENTIFIED BY 'GarcomSenha123!';
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'garcom_user'@'localhost';
 
--- Consultas necessárias para operação básica
 GRANT SELECT ON restaurante.mesa TO 'garcom_user'@'localhost';
 GRANT SELECT ON restaurante.garcom TO 'garcom_user'@'localhost';
 GRANT SELECT ON restaurante.produto TO 'garcom_user'@'localhost';
@@ -440,30 +426,24 @@ GRANT SELECT ON restaurante.categoria TO 'garcom_user'@'localhost';
 GRANT SELECT ON restaurante.vw_cardapio_completo TO 'garcom_user'@'localhost';
 GRANT SELECT ON restaurante.vw_contas_abertas TO 'garcom_user'@'localhost';
 
--- Manipulação de Contas e Pedidos (incluindo ajustes de UPDATE situacao e DELETE)
 GRANT SELECT, INSERT, UPDATE ON restaurante.conta TO 'garcom_user'@'localhost';
 GRANT SELECT, INSERT, DELETE ON restaurante.pedido TO 'garcom_user'@'localhost';
 GRANT UPDATE (situacao) ON restaurante.pedido TO 'garcom_user'@'localhost';
 GRANT SELECT, INSERT, UPDATE, DELETE ON restaurante.item_pedido TO 'garcom_user'@'localhost';
 
--- Execução das Procedures e Funções de negócio
 GRANT EXECUTE ON PROCEDURE restaurante.registrar_pedido TO 'garcom_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE restaurante.fechar_conta TO 'garcom_user'@'localhost';
 GRANT EXECUTE ON FUNCTION restaurante.calcular_total_conta TO 'garcom_user'@'localhost';
 
 
--- 2. PERFIL: GERENTE
--- Regra: Mesmas permissões do garçom + cadastro de novos produtos, categorias, garçons e mesas.
 CREATE USER IF NOT EXISTS 'gerente_user'@'localhost' IDENTIFIED BY 'GerenteSenha123!';
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'gerente_user'@'localhost';
 
--- Permissões de Gestão
 GRANT SELECT, INSERT, UPDATE ON restaurante.produto TO 'gerente_user'@'localhost';
 GRANT SELECT, INSERT, UPDATE ON restaurante.categoria TO 'gerente_user'@'localhost';
 GRANT SELECT, INSERT, UPDATE ON restaurante.garcom TO 'gerente_user'@'localhost';
 GRANT SELECT, INSERT, UPDATE ON restaurante.mesa TO 'gerente_user'@'localhost';
 
--- Herda permissões operacionais de contas e pedidos do garçom
 GRANT SELECT, INSERT, UPDATE ON restaurante.conta TO 'gerente_user'@'localhost';
 GRANT SELECT, INSERT, DELETE ON restaurante.pedido TO 'gerente_user'@'localhost';
 GRANT UPDATE (situacao) ON restaurante.pedido TO 'gerente_user'@'localhost';
@@ -471,18 +451,14 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON restaurante.item_pedido TO 'gerente_user
 GRANT SELECT ON restaurante.vw_cardapio_completo TO 'gerente_user'@'localhost';
 GRANT SELECT ON restaurante.vw_contas_abertas TO 'gerente_user'@'localhost';
 
--- Execução das Procedures e Funções
 GRANT EXECUTE ON PROCEDURE restaurante.registrar_pedido TO 'gerente_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE restaurante.fechar_conta TO 'gerente_user'@'localhost';
 GRANT EXECUTE ON FUNCTION restaurante.calcular_total_conta TO 'gerente_user'@'localhost';
 
 
--- 3. PERFIL: ADMIN (Administrador do Sistema)
--- Regra: Pode fazer tudo no banco do restaurante (substitui o uso do root).
 CREATE USER IF NOT EXISTS 'admin_user'@'localhost' IDENTIFIED BY 'AdminSenha123!';
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'admin_user'@'localhost';
 
--- Privilégios totais restritos exclusivamente ao banco de dados do restaurante
 GRANT ALL PRIVILEGES ON restaurante.* TO 'admin_user'@'localhost';
 
 FLUSH PRIVILEGES;
