@@ -1,7 +1,7 @@
 package br.com.entidade;
 
 /**
- * Contas MySQL criadas em TrabalhoBD.sql / AjustesBanco.sql.
+ * Contas MySQL criadas em banco/01_estrutura.sql.
  * LOGIN só lê usuarios e grupos_usuarios: é a conexão usada antes do login.
  * Obs.: em produção, leia estas credenciais de um arquivo de configuração.
  */

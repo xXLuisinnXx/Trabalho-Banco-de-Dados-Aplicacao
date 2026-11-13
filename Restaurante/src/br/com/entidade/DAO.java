@@ -17,6 +17,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class DAO {
+    // servidor MySQL: ajuste a porta aqui se o seu serviço não estiver na 3306
+    private static final String HOST = "localhost";
+    private static final int PORTA = 3306;
+    private static final String BANCO = "restaurante";
+
     // perfil usado nas conexões: LOGIN antes do login; a Sessao troca ao entrar/sair
     private static volatile PerfilBanco perfilAtual = PerfilBanco.LOGIN;
 
@@ -34,8 +39,8 @@ public class DAO {
    
     public void abrirBanco() throws SQLException {// criando metodo para acessar o banco
       try {
-        Class.forName("com.mysql.jdbc.Driver");//classe para utilização do arquivo com configurções do serivdor mysql
-        String url = "jdbc:mysql://localhost:3307/restaurante";// drive servidor e banco de dados a serem utilizados e indicação do banco a ser utilizado
+        Class.forName("com.mysql.cj.jdbc.Driver");//classe para utilização do arquivo com configurções do serivdor mysql
+        String url = "jdbc:mysql://" + HOST + ":" + PORTA + "/" + BANCO;// drive servidor e banco de dados a serem utilizados e indicação do banco a ser utilizado
         String user = perfilAtual.getUsuario();// conta MySQL do usuário logado (ver Sessao)
         String senha = perfilAtual.getSenha();// senha da conta MySQL do perfil
         con=(Connection) DriverManager.getConnection(url,user,senha);//metodo que usa os parametros para conectar com o banco

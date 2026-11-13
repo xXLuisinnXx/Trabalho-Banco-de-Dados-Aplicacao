@@ -444,7 +444,7 @@ GRANT SELECT ON restaurante.vw_contas_abertas TO 'garcom_user'@'localhost';
 GRANT SELECT, INSERT, UPDATE ON restaurante.conta TO 'garcom_user'@'localhost';
 GRANT SELECT, INSERT, DELETE ON restaurante.pedido TO 'garcom_user'@'localhost';
 GRANT UPDATE (situacao) ON restaurante.pedido TO 'garcom_user'@'localhost';
-GRANT SELECT, INSERT, DELETE ON restaurante.item_pedido TO 'garcom_user'@'localhost';
+GRANT SELECT, INSERT, UPDATE, DELETE ON restaurante.item_pedido TO 'garcom_user'@'localhost';
 
 -- Execução das Procedures e Funções de negócio
 GRANT EXECUTE ON PROCEDURE restaurante.registrar_pedido TO 'garcom_user'@'localhost';
@@ -467,7 +467,7 @@ GRANT SELECT, INSERT, UPDATE ON restaurante.mesa TO 'gerente_user'@'localhost';
 GRANT SELECT, INSERT, UPDATE ON restaurante.conta TO 'gerente_user'@'localhost';
 GRANT SELECT, INSERT, DELETE ON restaurante.pedido TO 'gerente_user'@'localhost';
 GRANT UPDATE (situacao) ON restaurante.pedido TO 'gerente_user'@'localhost';
-GRANT SELECT, INSERT, DELETE ON restaurante.item_pedido TO 'gerente_user'@'localhost';
+GRANT SELECT, INSERT, UPDATE, DELETE ON restaurante.item_pedido TO 'gerente_user'@'localhost';
 GRANT SELECT ON restaurante.vw_cardapio_completo TO 'gerente_user'@'localhost';
 GRANT SELECT ON restaurante.vw_contas_abertas TO 'gerente_user'@'localhost';
 

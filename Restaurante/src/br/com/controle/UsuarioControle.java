@@ -103,7 +103,7 @@ public class UsuarioControle {
         }
         if (!manterUsuario.existeGrupo(grupo.name())) {
             throw new RegraNegocioException("O grupo " + grupo
-                    + " não existe em grupos_usuarios. Execute o AjustesBanco.sql.");
+                    + " não existe em grupos_usuarios. Execute o 01_estrutura.sql.");
         }
     }
 

@@ -10,6 +10,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 import br.com.entidade.Conta;
 import br.com.entidade.DAO;
@@ -120,19 +121,66 @@ public class ManterPedido extends DAO {
         return json.append(']').toString();
     }
 
+    /**
+     * Sincroniza os itens do pedido com o que já está gravado, em uma única transação:
+     * item que continua muda de quantidade com UPDATE, item novo entra com INSERT e
+     * item retirado sai com DELETE. Quem recalcula pedido.total em qualquer um dos três
+     * casos são as triggers trg_item_pedido_au, _ai e _ad: a aplicação não soma nada.
+     * (Antes isto apagava todos os itens e reinseria, o que nunca exercitava o UPDATE
+     * e ainda queimava ids de item_pedido a cada alteração.)
+     */
     public void editarPedido(Pedido p) throws Exception {
         abrirBanco();
         try {
+            pst = null;
             con.setAutoCommit(false);
 
-            // pedido.total é recalculado pelas triggers trg_item_pedido_* a cada item
-            // removido/gravado: o UPDATE do total que existia aqui ficou redundante
-            String queryApagar = "delete from item_pedido where id_pedido = ?";
-            pst = con.prepareStatement(queryApagar);
-            pst.setInt(1, p.getId());
-            pst.executeUpdate();
+            // o que já está gravado, indexado por produto: id_produto -> id_item
+            LinkedHashMap<Integer, Integer> gravados = new LinkedHashMap<Integer, Integer>();
+            PreparedStatement consulta = con.prepareStatement(
+                    "select id_item, id_produto FROM item_pedido where id_pedido = ?");
+            consulta.setInt(1, p.getId());
+            ResultSet tr = consulta.executeQuery();
+            while (tr.next()) {
+                gravados.put(tr.getInt("id_produto"), tr.getInt("id_item"));
+            }
+            consulta.close();
 
-            gravarItens(p);
+            PreparedStatement alterar = con.prepareStatement(
+                    "UPDATE item_pedido set quantidade = ?, preco_unitario = ? where id_item = ?");
+            PreparedStatement inserir = con.prepareStatement(
+                    "INSERT INTO item_pedido (id_item,id_pedido,id_produto,quantidade,preco_unitario) "
+                    + "values(null,?,?,?,?)");
+            for (ItemPedido item : p.getItens()) {
+                Integer idItem = gravados.remove(item.getProduto().getId());
+                if (idItem == null) {
+                    inserir.setInt(1, p.getId());
+                    inserir.setInt(2, item.getProduto().getId());
+                    inserir.setInt(3, item.getQuantidade());
+                    inserir.setBigDecimal(4, item.getPrecoUnitario());
+                    inserir.executeUpdate();
+                } else {
+                    alterar.setInt(1, item.getQuantidade());
+                    alterar.setBigDecimal(2, item.getPrecoUnitario());
+                    alterar.setInt(3, idItem);
+                    alterar.executeUpdate();
+                }
+            }
+            alterar.close();
+            inserir.close();
+
+            // o que sobrou no mapa foi retirado do pedido
+            if (!gravados.isEmpty()) {
+                PreparedStatement remover = con.prepareStatement(
+                        "delete from item_pedido where id_item = ?");
+                for (Integer idItem : gravados.values()) {
+                    remover.setInt(1, idItem);
+                    remover.addBatch();
+                }
+                remover.executeBatch();
+                remover.close();
+            }
+
             con.commit();
         } catch (Exception e) {
             con.rollback();

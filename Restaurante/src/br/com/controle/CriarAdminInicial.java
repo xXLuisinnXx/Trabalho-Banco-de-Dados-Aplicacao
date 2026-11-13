@@ -4,7 +4,7 @@ import br.com.entidade.DAO;
 import br.com.entidade.PerfilBanco;
 
 /**
- * Roda uma vez, depois do AjustesBanco.sql, para criar o primeiro administrador.
+ * Roda uma vez, depois dos scripts da pasta banco, para criar o primeiro administrador.
  * Uso: CriarAdminInicial "Nome" email@dominio.com SenhaForte123
  */
 public class CriarAdminInicial {

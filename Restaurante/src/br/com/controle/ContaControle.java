@@ -1,6 +1,7 @@
 package br.com.controle;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import br.com.entidade.Conta;
@@ -30,6 +31,29 @@ public class ContaControle {
     public Conta consultarContaAberta(int idMesa) throws Exception {
         Sessao.exigir(Permissao.OPERAR_CONTAS_PEDIDOS);
         return buscarContaAberta(buscarMesa(idMesa));
+    }
+
+    /** Contas abertas no momento, lidas da view vw_contas_abertas. */
+    public List<Conta> listarAbertas() throws Exception {
+        Sessao.exigir(Permissao.OPERAR_CONTAS_PEDIDOS);
+        return manterConta.listarAbertas();
+    }
+
+    /**
+     * Histórico de contas abertas em um período (consulta servida pelo índice
+     * idx_conta_data_abertura, com o valor de cada conta vindo da function
+     * calcular_total_conta). É um relatório: garçom não vê.
+     */
+    public List<Conta> pesquisarPorPeriodo(LocalDate dataInicial, LocalDate dataFinal) throws Exception {
+        Sessao.exigir(Permissao.CONSULTAR_RELATORIOS);
+        if (dataInicial == null || dataFinal == null) {
+            throw new RegraNegocioException("Informe a data inicial e a data final.");
+        }
+        if (dataFinal.isBefore(dataInicial)) {
+            throw new RegraNegocioException("A data final não pode ser anterior à data inicial.");
+        }
+        return manterConta.pesquisarPorPeriodo(
+                dataInicial.atStartOfDay(), dataFinal.plusDays(1).atStartOfDay());
     }
 
     public Conta fecharConta(int idMesa) throws Exception {

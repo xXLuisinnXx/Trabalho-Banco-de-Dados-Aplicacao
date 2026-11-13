@@ -105,6 +105,32 @@ public class ManterProduto extends DAO {
         return possui;
     }
 
+    // Cardápio lido direto da view vw_cardapio_completo: a junção produto x categoria
+    // fica no banco e a aplicação só exibe o que a view entrega.
+    public ArrayList<Produto> listarCardapio() throws Exception {
+        ArrayList<Produto> cardapio = new ArrayList<Produto>();
+        abrirBanco();
+        try {
+            pst = con.prepareStatement("select id_produto, produto, preco, categoria "
+                    + "FROM vw_cardapio_completo order by categoria, produto");
+            ResultSet tr = pst.executeQuery();
+            while (tr.next()) {
+                Categoria c = new Categoria();
+                c.setNome(tr.getString("categoria")); // a view entrega só o nome da categoria
+
+                Produto p = new Produto();
+                p.setId(tr.getInt("id_produto"));
+                p.setNome(tr.getString("produto"));
+                p.setPreco(tr.getBigDecimal("preco"));
+                p.setCategoria(c);
+                cardapio.add(p);
+            }
+        } finally {
+            fecharBanco();
+        }
+        return cardapio;
+    }
+
     private void copiar(ResultSet tr, Produto p) throws Exception {
         Categoria c = new Categoria();
         c.setId(tr.getInt("id_categoria"));

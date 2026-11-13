@@ -1,5 +1,7 @@
 package br.com.visao;
 
+import br.com.controle.Permissao;
+import br.com.controle.Sessao;
 import br.com.controle.MesaControle;
 import br.com.entidade.Mesa;
 import javax.swing.JOptionPane;
@@ -23,6 +25,9 @@ public class TelaMesa extends javax.swing.JFrame {
             }
         };
         tblMesas.setModel(modelo);
+        // sem permissao os botoes ficam desabilitados; o controle e o banco barram de novo
+        btnSalvar.setEnabled(Sessao.temPermissao(Permissao.CADASTRAR_CATALOGO));
+        btnExcluir.setEnabled(Sessao.temPermissao(Permissao.EXCLUIR_CADASTRO));
         listar();
     }
 

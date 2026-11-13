@@ -20,6 +20,12 @@ private final ManterProduto manterProduto = new ManterProduto();
         manterProduto.inserir(produto);
     }
 
+    /** Cardápio (produto + categoria) lido da view vw_cardapio_completo. */
+    public List<Produto> listarCardapio() throws Exception {
+        Sessao.exigir(Permissao.CONSULTAR);
+        return manterProduto.listarCardapio();
+    }
+
     public void atualizar(int id, String nome, BigDecimal preco, int idCategoria) throws Exception {
         Sessao.exigir(Permissao.CADASTRAR_CATALOGO);
         Produto produto = buscarExistente(id);

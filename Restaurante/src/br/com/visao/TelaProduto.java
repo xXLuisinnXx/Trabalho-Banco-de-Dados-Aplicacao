@@ -1,5 +1,7 @@
 package br.com.visao;
 
+import br.com.controle.Permissao;
+import br.com.controle.Sessao;
 import br.com.controle.CategoriaControle;
 import br.com.controle.ProdutoControle;
 import br.com.entidade.Categoria;
@@ -34,6 +36,9 @@ public class TelaProduto extends javax.swing.JFrame {
         };
         tblProdutos.setModel(modelo);
         carregarCategorias();
+        // sem permissao os botoes ficam desabilitados; o controle e o banco barram de novo
+        btnSalvar.setEnabled(Sessao.temPermissao(Permissao.CADASTRAR_CATALOGO));
+        btnExcluir.setEnabled(Sessao.temPermissao(Permissao.EXCLUIR_CADASTRO));
         listar();
     }
 
